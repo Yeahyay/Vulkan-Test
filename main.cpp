@@ -12,8 +12,8 @@
 #include <optional>
 #include <set>
 
-#include <Shaders/vertex.h>
-#include <Shaders/fragment.h>
+// #include <Shaders/vertex.h>
+// #include <Shaders/fragment.h>
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -392,8 +392,8 @@ private:
         auto vertShaderCode = readFile("Shaders/triangle_vert.spv");
         auto fragShaderCode = readFile("Shaders/triangle_frag.spv");
 
-        VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, triangleVertexCode);
-        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, triangleFragmentCode);
+        VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
+        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
 
         VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
         vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -502,11 +502,11 @@ private:
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
     }
 
-    VkShaderModule createShaderModule(const std::vector<char>& code, const uint32_t* code2) {
+    VkShaderModule createShaderModule(const std::vector<char>& code) {
         VkShaderModuleCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.codeSize = code.size();
-        createInfo.pCode = code2;//reinterpret_cast<const uint32_t*>(code.data());
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
         VkShaderModule shaderModule;
         if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
