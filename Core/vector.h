@@ -5,17 +5,18 @@
 
 #define vector_init(TYPE, VECTOR, THRESHOLD, SIZE, INIT)	\
 {	\
-	INIT,	\
-	&VECTOR##_vec_append,	\
-	&VECTOR##_vec_appendP,	\
-	&VECTOR##_vec_resize,	\
-	&VECTOR##_vec_remove,	\
-	&VECTOR##_vec_isEmpty,	\
-	THRESHOLD,	\
-	SIZE,	\
-	SIZE > 0 ? false : true,	\
-	sizeof(TYPE),	\
-	2,	\
+	.data			= INIT,	\
+	.append		= &VECTOR##_vec_append,	\
+	.appendP 	= &VECTOR##_vec_appendP,	\
+	.resize		= &VECTOR##_vec_resize,	\
+	.remove		= &VECTOR##_vec_remove,	\
+	.isEmpty		= &VECTOR##_vec_isEmpty,	\
+	.free			= &VECTOR##_vec_free,	\
+	.threshold	= THRESHOLD,	\
+	.size			= SIZE,	\
+	.empty		= SIZE > 0 ? false : true,	\
+	.typeSize	= sizeof(TYPE),	\
+	.factor		= 2,	\
 }	\
 
 #define vector_static_null(TYPE, VECTOR, NAME)	\
@@ -38,6 +39,7 @@
 		void (*resize)(NAME##_vector*, size_t newSize);	\
 		void (*remove)(NAME##_vector*, long int index);	\
 		bool (*isEmpty)(NAME##_vector*);	\
+		void (*free)(NAME##_vector*);	\
 		size_t threshold;	\
 		size_t size;	\
 		bool empty;	\
@@ -86,6 +88,12 @@
 	static bool NAME##_vec_isEmpty(NAME##_vector* self) {	\
 		return self->size > 0 ? true : false;	\
 	}	\
+	static void NAME##_vec_free(NAME##_vector* self) {	\
+		free(self->data);	\
+		self->data = 0;	\
+		free(self);	\
+		self = 0;	\
+	}	\
 	NAME##_vector* NAME##_vector_new(double factor, size_t size) {	\
 		NAME##_vector* newVector = malloc(sizeof(NAME##_vector));	\
 		newVector->append = &NAME##_vec_append;	\
@@ -93,6 +101,7 @@
 		newVector->resize = &NAME##_vec_resize;	\
 		newVector->remove = &NAME##_vec_remove;	\
 		newVector->isEmpty = &NAME##_vec_isEmpty;	\
+		newVector->free = &NAME##_vec_free;	\
 		newVector->threshold = size > 0 ? size : 1;	\
 		newVector->size = 0;	\
 		newVector->empty = true;	\
@@ -102,17 +111,18 @@
 		return newVector;	\
 	}	\
 	const NAME##_vector NAME##_vector_INIT = {	\
-		NULL,	\
-		&NAME##_vec_append,	\
-		&NAME##_vec_appendP,	\
-		&NAME##_vec_resize,	\
-		&NAME##_vec_remove,	\
-		&NAME##_vec_isEmpty,	\
-		1,	\
-		0,	\
-	 	true,	\
-		sizeof(TYPE),	\
-		2,	\
+		.data			= NULL,	\
+		.append		= &NAME##_vec_append,	\
+		.appendP 	= &NAME##_vec_appendP,	\
+		.resize		= &NAME##_vec_resize,	\
+		.remove		= &NAME##_vec_remove,	\
+		.isEmpty		= &NAME##_vec_isEmpty,	\
+		.free			= &NAME##_vec_free,	\
+		.threshold 	= 1,	\
+		.size			= 0,	\
+	 	.empty		= true,	\
+		.typeSize	= sizeof(TYPE),	\
+		.factor		= 2,	\
 	}
 
 #endif

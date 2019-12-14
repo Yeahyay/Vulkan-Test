@@ -5,13 +5,21 @@ BUILD_PATH = Compiled\Build
 INCLUDE_PATHS := \
 	-I'$(CURDIR)' \
 	-I'H:\My Stuff\Game Development\C\Libraries\glfw-3.3.bin.WIN64\include' \
-	-I'C:\VulkanSDK\1.1.121.2\Include'
+	-I'C:\VulkanSDK\1.1.121.2\Include' \
+	-I'H:\My Stuff\Game Development\C\Libraries\gsl Windows\gsl\include'
 	#-I'H:\My Stuff\Game Development\C\Libraries\PDCurses-3.8'
 LIBRARY_PATHS = \
 	-L'H:\My Stuff\Game Development\C\Libraries\glfw-3.3.bin.WIN64\lib-mingw-w64' \
-	-L'C:\VulkanSDK\1.1.121.2\Lib'
+	-L'C:\VulkanSDK\1.1.121.2\Lib' \
+	-L'H:\My Stuff\Game Development\C\Libraries\gsl Windows\gsl\lib'
 	#-L'H:\My Stuff\Game Development\C\Libraries\PDCurses-3.8\wincon'
-LIBS = -lm -lglfw3 -lgdi32 -lvulkan-1
+LIBS = \
+	-lm	\
+	-lglfw3 \
+	-lgdi32 \
+	-lvulkan-1 \
+	# -lgslblas
+	# -lgsl
 CC = x86_64-w64-mingw32-gcc
 CFLAGS = -g3 -Og -std=c99 -pedantic -Wall -Wno-unused -fstrict-aliasing #-save-temps
 BUILD_TYPE = -c
