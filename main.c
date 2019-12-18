@@ -14,7 +14,7 @@
 #include <Core/vector.h>
 #include <Core/set.h>
 
-#include <gsl/gsl_math.h>
+#include <gsl/gsl_vector.h>
 
 #define error(...)	\
 	printf("YEET\n");	\
@@ -38,6 +38,53 @@ const int WIDTH = 800;
 const int HEIGHT = 600;
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
+// TYPE DEFINITIONS
+
+typedef struct {
+	double x;
+	double y;
+} vec2;
+vec2 vec2_init = {
+	0, 0
+};
+typedef struct {
+	double x;
+	double y;
+	double z;
+} vec3;
+vec3 vec3_init = {
+	0, 0, 0
+};
+
+typedef struct {
+	vec2 pos;
+	vec3 color;
+	void (*getBindingDescription)(VkVertexInputBindingDescription*);
+} Vertex;
+void Vertex_getBindingDescription(VkVertexInputBindingDescription* bindingDescription) {
+ 	// *bindingDescription = {0};
+	bindingDescription->binding = 0;
+	bindingDescription->stride = sizeof(Vertex);
+	bindingDescription->inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+ 	// return bindingDescription;
+}
+void Vertex_getAttributeDescriptions(VkVertexInputAttributeDescription attributeDescriptions[2]) {
+	attributeDescriptions[0].binding = 0;
+	attributeDescriptions[0].location = 0;
+	attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescriptions[0].offset = offsetof(Vertex, pos);
+
+	attributeDescriptions[1].binding = 0;
+	attributeDescriptions[1].location = 1;
+	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	attributeDescriptions[1].offset = offsetof(Vertex, color);
+}
+Vertex Vertex_init = {
+	{0, 0},
+	{0, 0, 0},
+	&Vertex_getBindingDescription
+};
+
 // DYNAMIC DATA TYPE GENRATIONS
 // VECTORS
 generate_vector(const char*, constCharP);
@@ -60,6 +107,9 @@ generate_vector(VkCommandBuffer, VkCommandBuffer);
 generate_vector(VkSemaphore, VkSemaphore);
 generate_vector(VkFence, VkFence);
 
+generate_vector(VkVertexInputAttributeDescription, VkVertexInputAttributeDescription);
+generate_vector(Vertex, Vertex);
+
 // SETS
 generate_set(char*, string,
 	return a-b;
@@ -70,10 +120,12 @@ generate_set(uint32_t, uint32,
 
 // DYNAMIC DATA TYPE STATIC DECLARATIONS
 vector_static(const char*, constCharP, validationLayers, 1,
-	"VK_LAYER_KHRONOS_validation"
+	"VK_LAYER_KHRONOS_validation",
 );
 vector_static(const char*, constCharP, deviceExtensions, 1,
-	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+	"Stinky",
+	"COCK"
 );
 
 // #define NDEBUG
@@ -85,7 +137,7 @@ vector_static(const char*, constCharP, deviceExtensions, 1,
 	const bool enableValidationLayers = true;
 #endif
 
-// STRUCT DEFINITIONS
+// VECTOR RELIANT TYPE DEFINITIONS
 typedef struct _QueueFamilyIndices QueueFamilyIndices;
 struct _QueueFamilyIndices {
 	uint32_t graphicsFamily;
@@ -111,8 +163,6 @@ SwapChainSupportDetails SwapChainSupportDetails_INIT = {
 	&(VkSurfaceFormatKHR_vector) vector_init(VkSurfaceFormatKHR, VkSurfaceFormatKHR, 1, 0, NULL),
 	&(VkPresentModeKHR_vector) vector_init(VkPresentModeKHR, VkPresentModeKHR, 1, 0, NULL)
 };
-
-// FUNCTION PROTOTYPES
 
 // DEBUG HANDLE CREATION AND DESTRUCTION
 VkResult CreateDebugUtilsMessengerEXT(
@@ -248,6 +298,15 @@ long long int currentFrame = 0;
 
 bool framebufferResized = false;
 
+VkBuffer vertexBuffer;
+VkDeviceMemory vertexBufferMemory;
+
+vector_static(Vertex, Vertex, vertices, 3,
+	{{0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}, &Vertex_getBindingDescription},
+	{{0.5f, 0.5f}, {0.0f, 1.0f, 0.0f}, &Vertex_getBindingDescription},
+	{{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, &Vertex_getBindingDescription},
+);
+
 void initWindow(void) {
 	glfwInit();
 
@@ -264,21 +323,78 @@ void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
 	framebufferResized = true;
 }	// END framebufferResizeCallback
 
+void createVertexBuffer(void);
+
 void initVulkan(void) {
 	createInstance();
 	setupDebugMessenger();
 	createSurface();
 	pickPhysicalDevice();
 	createLogicalDevice();
+
+	// SWAP CHAIN
 	createSwapChain();
 	createImageViews();
 	createRenderPass();
 	createGraphicsPipeline();
 	createFramebuffers();
 	createCommandPool();
+	// INDEPENDENT OF SWAP CHAIN
+		createVertexBuffer();
 	createCommandBuffers();
+
 	createSyncObjects();
 }	// END initVulkan
+
+uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
+	VkPhysicalDeviceMemoryProperties memProperties;
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		// iterate through bitfields and check if the bit is the same with the type
+		if (typeFilter & (1 << i) &&
+			// also check  for desired special features
+			(memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
+	}
+
+	error("failed to find suitable memory type!");
+}
+
+void createVertexBuffer(void) {
+	VkBufferCreateInfo bufferInfo = {0};
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = sizeof(vertices.data[0]) * vertices.size;
+	bufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	if (vkCreateBuffer(device, &bufferInfo, NULL, &vertexBuffer) != VK_SUCCESS) {
+		error("failed to create vertex buffer!");
+	}
+
+	VkMemoryRequirements memRequirements = {0};
+	vkGetBufferMemoryRequirements(device, vertexBuffer, &memRequirements);
+
+	VkMemoryAllocateInfo allocInfo = {0};
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(
+		memRequirements.memoryTypeBits,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+		VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	if (vkAllocateMemory(device, &allocInfo, NULL, &vertexBufferMemory) != VK_SUCCESS) {
+		error("failed to allocate vertex buffer memory!");
+	}
+
+	vkBindBufferMemory(device, vertexBuffer, vertexBufferMemory, 0);
+
+	void* data;
+	vkMapMemory(device, vertexBufferMemory, 0, bufferInfo.size, 0, &data);
+	// copy data to mapped memory
+	memcpy(data, vertices.data, bufferInfo.size);
+	vkUnmapMemory(device, vertexBufferMemory);
+}	// END createVertexBuffer
 
 void recreateSwapChain() {
 	int width = 0, height = 0;
@@ -300,7 +416,7 @@ void recreateSwapChain() {
 	createGraphicsPipeline();
 	createFramebuffers();
 	createCommandBuffers();
-}
+}	// END recreateSwapChain
 
 void mainLoop(void) {
 	while (!glfwWindowShouldClose(window)) {
@@ -336,6 +452,9 @@ void cleanupSwapChain() {
 
 void cleanup(void) {
 	cleanupSwapChain();
+
+	vkDestroyBuffer(device, vertexBuffer, NULL);
+	vkFreeMemory(device, vertexBufferMemory, NULL);
 
 	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(device, renderFinishedSemaphores.data[i], NULL);
@@ -729,6 +848,16 @@ void createGraphicsPipeline(void) {
 	vertexInputInfo.vertexBindingDescriptionCount = 0;
 	vertexInputInfo.vertexAttributeDescriptionCount = 0;
 
+	VkVertexInputBindingDescription bindingDescription = {0};
+	Vertex_getBindingDescription(&bindingDescription);
+	VkVertexInputAttributeDescription attributeDescriptions[2] = {{0},{0}};
+	Vertex_getAttributeDescriptions(attributeDescriptions);
+
+	vertexInputInfo.vertexBindingDescriptionCount = 1;
+	vertexInputInfo.vertexAttributeDescriptionCount  = 2;
+	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+	vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
+
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {0};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -908,7 +1037,13 @@ void createCommandBuffers(void) {
 
 		vkCmdBeginRenderPass(commandBuffers.data[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(commandBuffers.data[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-		vkCmdDraw(commandBuffers.data[i], 3, 1, 0, 0);
+
+
+		VkBuffer vertexBuffers[] = {vertexBuffer};
+		VkDeviceSize offsets[] = {0};
+		vkCmdBindVertexBuffers(commandBuffers.data[i], 0, 1, vertexBuffers, offsets);
+
+		vkCmdDraw(commandBuffers.data[i], vertices.size, 1, 0, 0);
 		vkCmdEndRenderPass(commandBuffers.data[i]);
 		if (vkEndCommandBuffer(commandBuffers.data[i]) != VK_SUCCESS) {
 			error("failed to record command buffer!");
@@ -1288,6 +1423,8 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 	}
 	return VK_FALSE;
 }	// END debugCallback
+
+// #include <gsl/gsl_sf.h>
 
 int main(void) {
 	char* locale;

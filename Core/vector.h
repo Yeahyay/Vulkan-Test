@@ -3,9 +3,9 @@
 
 // #include <Core/Class/cOO.h>
 
-#define vector_init(TYPE, VECTOR, THRESHOLD, SIZE, INIT)	\
+#define vector_init(TYPE, VECTOR, THRESHOLD, SIZE, ...)	\
 {	\
-	.data			= INIT,	\
+	.data			= __VA_ARGS__,	\
 	.append		= &VECTOR##_vec_append,	\
 	.appendP 	= &VECTOR##_vec_appendP,	\
 	.resize		= &VECTOR##_vec_resize,	\
@@ -19,13 +19,15 @@
 	.factor		= 2,	\
 }	\
 
+#define INIT(...) {__VA_ARGS__}
+
 #define vector_static_null(TYPE, VECTOR, NAME)	\
 	VECTOR##_vector NAME = 	\
 		vector_init(TYPE, VECTOR, 1, 0, NULL)
 
 #define vector_static(TYPE, VECTOR, NAME, SIZE, ...)	\
 	VECTOR##_vector NAME = 	\
-		vector_init(TYPE, VECTOR, SIZE, SIZE, (TYPE[]){__VA_ARGS__})
+		vector_init(TYPE, VECTOR, SIZE, SIZE, (TYPE[]) {__VA_ARGS__})
 
 #define vector_reinterpret(VECTOR, TO_TYPE)	\
 	(TO_TYPE)VECTOR->data

@@ -18,10 +18,11 @@ LIBS = \
 	-lglfw3 \
 	-lgdi32 \
 	-lvulkan-1 \
+	# -l:libgsl.a
 	# -lgslblas
 	# -lgsl
 CC = x86_64-w64-mingw32-gcc
-CFLAGS = -g3 -Og -std=c99 -pedantic -Wall -Wno-unused -fstrict-aliasing #-save-temps
+CFLAGS = -g3 -std=c18 -pedantic -Wall -Wno-unused -fstrict-aliasing #-save-temps
 BUILD_TYPE = -c
 
 #SPICY STUFF THAT I DO NOT KNOW
